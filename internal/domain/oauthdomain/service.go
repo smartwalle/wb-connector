@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-// 认证相关的领域错误。
+// OAuth 相关的领域错误。
 var (
 	// ErrInvalidAccount 表示账号或密码不正确。
 	ErrInvalidAccount = errors.New("invalid account or password")
@@ -102,7 +102,7 @@ type RegisterRequest struct {
 	TokenEndpointAuthMethod string `json:"token_endpoint_auth_method,omitempty"`
 }
 
-// Service 是认证模块的业务契约，每个方法是一个业务用例。
+// Service 是 OAuth 模块的业务契约，每个方法是一个业务用例。
 //
 // 实现由 internal/service 提供，在应用组装层注入。
 //
@@ -146,4 +146,14 @@ type Service interface {
 	//
 	// 令牌无效或已过期时返回 ErrInvalidToken。
 	VerifyToken(ctx context.Context, accessToken string) (*Token, error)
+
+	// Issuer 返回授权服务器标识。
+	//
+	// 它是元数据里各端点地址的前缀，也是客户端发现授权服务器的依据。
+	Issuer() string
+
+	// Resource 返回受保护资源的标识。
+	//
+	// 它是客户端申请令牌时指定的目标资源。
+	Resource() string
 }

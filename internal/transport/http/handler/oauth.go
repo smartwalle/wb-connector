@@ -19,36 +19,6 @@ import (
 	"github.com/smartwalle/rx/router"
 )
 
-// OAuth 的端点路径与标准路径保持一致。
-const (
-	// PathRegister 是动态客户端注册端点。
-	PathRegister = "/oauth/register"
-
-	// PathAuthorize 是授权端点。
-	PathAuthorize = "/oauth/authorize"
-
-	// PathLogin 是登录表单提交端点。
-	PathLogin = "/oauth/login"
-
-	// PathToken 是令牌端点。
-	PathToken = "/oauth/token"
-
-	// PathRevoke 是令牌撤销端点。
-	PathRevoke = "/oauth/revoke"
-)
-
-// OAuth 协议相关的取值。
-const (
-	// grantTypeAuthorizationCode 是授权码流程的授权类型。
-	grantTypeAuthorizationCode = "authorization_code"
-
-	// grantTypeRefreshToken 是刷新流程的授权类型。
-	grantTypeRefreshToken = "refresh_token"
-
-	// codeChallengeMethodS256 是唯一支持的 PKCE 挑战算法。
-	codeChallengeMethodS256 = "S256"
-)
-
 // OAuthHandler 提供 MCP 授权服务器的相关端点。
 //
 // service 是领域包定义的 oauthdomain.Service 契约，具体实现由应用组装层注入。
@@ -97,9 +67,9 @@ func (h *OAuthHandler) Register(c *rx.Context) {
 		"client_id":                  client.ClientID,
 		"redirect_uris":              client.RedirectURIs,
 		"client_name":                client.ClientName,
-		"grant_types":                []string{grantTypeAuthorizationCode, grantTypeRefreshToken},
+		"grant_types":                []string{oauthdomain.GrantTypeAuthorizationCode, oauthdomain.GrantTypeRefreshToken},
 		"response_types":             []string{"code"},
-		"token_endpoint_auth_method": "none",
+		"token_endpoint_auth_method": oauthdomain.TokenEndpointAuthMethodNone,
 		"client_id_issued_at":        client.CreatedAt.Unix(),
 	})
 }

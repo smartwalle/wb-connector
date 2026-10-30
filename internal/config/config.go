@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"wb-connector/internal/domain/oauthdomain"
 	"wb-connector/internal/foundation/logging"
 	"wb-connector/internal/transport/http"
 )
@@ -20,6 +21,9 @@ type Config struct {
 
 	// HTTP 是 HTTP 服务配置，由传输层维护。
 	HTTP http.Config `yaml:"http"`
+
+	// OAuth 是 OAuth 授权服务器的配置，由 OAuth 领域维护。
+	OAuth oauthdomain.Config `yaml:"oauth"`
 
 	// Logging 是日志配置，由日志模块维护。
 	Logging logging.Config `yaml:"logging"`
@@ -52,6 +56,9 @@ func (c Config) Validate() error {
 		return err
 	}
 	if err := c.HTTP.Validate(); err != nil {
+		return err
+	}
+	if err := c.OAuth.Validate(); err != nil {
 		return err
 	}
 	return nil

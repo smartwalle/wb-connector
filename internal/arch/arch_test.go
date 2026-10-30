@@ -1,0 +1,128 @@
+// Package arch 用测试固定分层的依赖方向。
+//
+// 分层约定：
+//
+//	domain       最底层，只定义契约与数据结构，不依赖任何内部包
+//	service      业务实现，只依赖 domain
+//	transport    协议适配，只依赖 domain
+//	config       组合层，把各模块的配置结构组合成配置文件
+//	app          组装层，按依赖方向创建实现并注入
+//
+// config 依赖各模块，各模块反过来依赖 config 就会形成循环引用。
+// 这类问题在编译期才暴露，且报错信息（import cycle not allowed）
+// 很难让人立刻联想到是哪条规则被破坏了。这里把规则写成测试。
+package arch
+
+import (
+	"os/exec"
+	"strings"
+	"testing"
+)
+
+// listDeps 返回指定包依赖的全部内部包。
+func listDeps(t *testing.T, pkg string) []string {
+	t.Helper()
+	var cmd = exec.Command("go", "list", "-deps", pkg)
+	var out, err = cmd.Output()
+	if err != nil {
+		t.Fatalf("go list -deps %s 失败: %v", pkg, err)
+	}
+	var deps []string
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.HasPrefix(line, "wb-connector/") {
+			deps = append(deps, line)
+		}
+	}
+	return deps
+}
+
+// TestLayerDependencies 验证分层依赖方向。
+//
+// 规则按"被检查的包"分组，同组内的包之间也不能互相依赖——
+// 那会让上层与下层纠缠在一起，循环引用只是迟早的事。
+func TestLayerDependencies(t *testing.T) {
+	const (
+		domain    = "wb-connector/internal/domain"
+		service   = "wb-connector/internal/service"
+		transport = "wb-connector/internal/transport"
+		configPkg = "wb-connector/internal/config"
+	)
+
+	var rules = []struct {
+		name string
+		pkg  string
+		deny []string
+		why  string
+	}{
+		{
+			name: "领域契约不依赖任何实现",
+			pkg:  domain + "/oauthdomain",
+			deny: []string{service, transport, configPkg},
+			why:  "契约是最底层，一旦依赖实现就无法被实现反向依赖",
+		},
+		{
+			name: "领域契约不依赖任何实现",
+			pkg:  domain + "/greetdomain",
+			deny: []string{service, transport, configPkg},
+			why:  "契约是最底层，一旦依赖实现就无法被实现反向依赖",
+		},
+		{
+			name: "业务实现不依赖组合层与传输层",
+			pkg:  service,
+			deny: []string{configPkg, transport},
+			why:  "组合层依赖业务实现，业务实现再依赖组合层就形成循环引用",
+		},
+		{
+			name: "传输层不依赖组合层与业务实现",
+			pkg:  transport + "/http",
+			deny: []string{configPkg, service},
+			why:  "传输层只依赖领域契约；依赖组合层会让配置反向影响协议实现",
+		},
+		{
+			name: "传输层不依赖组合层与业务实现",
+			pkg:  transport + "/http/handler",
+			deny: []string{configPkg, service},
+			why:  "传输层只依赖领域契约；依赖组合层会让配置反向影响协议实现",
+		},
+		{
+			name: "传输层不依赖组合层与业务实现",
+			pkg:  transport + "/http/middleware",
+			deny: []string{configPkg, service},
+			why:  "传输层只依赖领域契约；依赖组合层会让配置反向影响协议实现",
+		},
+	}
+
+	for _, rule := range rules {
+		t.Run(rule.name+"/"+rule.pkg, func(t *testing.T) {
+			var deps = listDeps(t, rule.pkg)
+			for _, dep := range deps {
+				for _, bad := range rule.deny {
+					// 被检查的包自身不算。
+					if dep == rule.pkg {
+						continue
+					}
+					if dep == bad || strings.HasPrefix(dep, bad+"/") {
+						t.Errorf("%s 不应依赖 %s —— %s", rule.pkg, bad, rule.why)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestConfigOnlyDependsDownward 验证组合层只向下依赖。
+//
+// config 组合各模块的配置结构，这是允许的；反过来不行。
+func TestConfigOnlyDependsDownward(t *testing.T) {
+	var deps = listDeps(t, "wb-connector/internal/config")
+	var found bool
+	for _, dep := range deps {
+		if dep == "wb-connector/internal/app" {
+			t.Errorf("config 不应依赖 app —— 组合层在组装层之下")
+			found = true
+		}
+	}
+	if !found {
+		t.Log("config 的依赖方向正确")
+	}
+}

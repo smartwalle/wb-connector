@@ -21,7 +21,7 @@ import (
 	"wb-connector/internal/domain/oauthdomain"
 )
 
-// 认证相关的时长与规模上限。
+// OAuth 相关的时长与规模上限。
 const (
 	// authCodeTTL 是授权码有效期。规范建议约 10 分钟。
 	authCodeTTL = 10 * time.Minute
@@ -47,9 +47,6 @@ const (
 	// maxTokens 是同时有效的访问令牌数量上限，防止内存无限增长。
 	maxTokens = 5000
 
-	// codeChallengeMethodS256 是唯一支持的 PKCE 挑战算法。
-	codeChallengeMethodS256 = "S256"
-
 	// loopbackCallbackScheme 是本机回环回调使用的协议。
 	loopbackCallbackScheme = "http"
 )
@@ -72,7 +69,7 @@ var accounts = map[string]string{
 	"demo": "demo123",
 }
 
-// OAuthService 实现认证模块的业务用例。
+// OAuthService 实现 OAuth 模块的业务用例。
 //
 // 授权码、客户端与令牌都保存在内存中，进程重启后失效。
 type OAuthService struct {
@@ -89,16 +86,34 @@ type OAuthService struct {
 
 	// refreshTokens 是刷新令牌索引，键为刷新令牌本身，值为访问令牌。
 	refreshTokens map[string]*oauthdomain.Token
+
+	// config 是 OAuth 授权服务器的配置：授权服务器的标识与受保护资源。
+	config oauthdomain.Config
 }
 
-// NewAuthService 创建 OAuthService。
-func NewAuthService() *OAuthService {
+// NewOAuthService 创建 OAuthService。
+//
+// cfg 是 OAuth 授权服务器的配置：授权服务器的标识与受保护资源。
+func NewOAuthService(cfg oauthdomain.Config) *OAuthService {
+	// 去掉结尾斜杠，避免拼出双斜杠。
+	cfg.Issuer = strings.TrimSuffix(cfg.Issuer, "/")
 	return &OAuthService{
 		clients:       make(map[string]*oauthdomain.Client),
 		codes:         make(map[string]*oauthdomain.AuthCode),
 		tokens:        make(map[string]*oauthdomain.Token),
 		refreshTokens: make(map[string]*oauthdomain.Token),
+		config:        cfg,
 	}
+}
+
+// Issuer 返回授权服务器标识。
+func (s *OAuthService) Issuer() string {
+	return s.config.Issuer
+}
+
+// Resource 返回受保护资源的标识。
+func (s *OAuthService) Resource() string {
+	return s.config.Resource
 }
 
 // Authenticate 校验账号密码，成功返回用户标识。
@@ -152,7 +167,7 @@ func (s *OAuthService) RegisterClient(ctx context.Context, req oauthdomain.Regis
 // ValidateAuthorizeRequest 校验授权请求的参数是否合法。
 func (s *OAuthService) ValidateAuthorizeRequest(ctx context.Context, req oauthdomain.AuthorizeRequest) error {
 	// PKCE 必须使用 S256。
-	if req.CodeChallengeMethod != codeChallengeMethodS256 {
+	if req.CodeChallengeMethod != oauthdomain.CodeChallengeMethodS256 {
 		return oauthdomain.ErrUnsupportedChallengeMethod
 	}
 	if req.CodeChallenge == "" {
@@ -206,9 +221,9 @@ func (s *OAuthService) IssueAuthCode(ctx context.Context, req oauthdomain.Author
 // IssueToken 用授权码或刷新令牌换取访问令牌。
 func (s *OAuthService) IssueToken(ctx context.Context, req oauthdomain.TokenRequest) (*oauthdomain.Token, error) {
 	switch req.GrantType {
-	case "authorization_code":
+	case oauthdomain.GrantTypeAuthorizationCode:
 		return s.exchangeAuthCode(req)
-	case "refresh_token":
+	case oauthdomain.GrantTypeRefreshToken:
 		return s.refreshAccessToken(req)
 	default:
 		return nil, oauthdomain.ErrUnsupportedGrant

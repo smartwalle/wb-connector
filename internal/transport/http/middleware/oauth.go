@@ -23,7 +23,10 @@ const HeaderWWWAuthenticate = "WWW-Authenticate"
 // 校验通过时把令牌携带的用户标识放进请求上下文，后续处理器可从中读取。
 //
 // 用法：作为路由处理器的外层，校验通过后调用 c.Next() 交给下一个处理器。
-func MidOAuth(service oauthdomain.Service, resourceMetadataURL string) rx.HandlerFunc {
+func MidOAuth(service oauthdomain.Service, resourceMetadataPath string) rx.HandlerFunc {
+	// 客户端收到 401 后访问它，发现授权服务器并发起登录流程。
+	var resourceMetadataURL = service.Issuer() + resourceMetadataPath
+
 	return func(c *rx.Context) {
 		var value = extractBearerToken(c.Request)
 		if value == "" {

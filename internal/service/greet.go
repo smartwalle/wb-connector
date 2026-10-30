@@ -1,6 +1,3 @@
-// Package service 实现业务用例。
-//
-// 每个业务模块一个文件，实现领域包定义的 Service 契约。
 package service
 
 import (

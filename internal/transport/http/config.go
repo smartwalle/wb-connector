@@ -21,15 +21,6 @@ type Config struct {
 
 	// IdleTimeout 是 keep-alive 空闲连接的超时时间。
 	IdleTimeout time.Duration `yaml:"idle_timeout"`
-
-	// OAuthIssuer 是授权服务器对外可达的地址，例如 https://mcp.example.com。
-	//
-	// 它是 OAuth 元数据里各端点的前缀，也用于生成 401 挑战中的
-	// resource_metadata 地址。生产环境必须使用 HTTPS。
-	OAuthIssuer string `yaml:"oauth_issuer"`
-
-	// OAuthResource 是受保护资源的标识，通常与 MCP 端点的地址一致。
-	OAuthResource string `yaml:"oauth_resource"`
 }
 
 // Validate 校验配置。错误信息带具体配置路径，便于定位问题。
@@ -45,12 +36,6 @@ func (c Config) Validate() error {
 	}
 	if c.IdleTimeout <= 0 {
 		return fmt.Errorf("http.idle_timeout must be positive")
-	}
-	if strings.TrimSpace(c.OAuthIssuer) == "" {
-		return fmt.Errorf("http.oauth_issuer is required")
-	}
-	if strings.TrimSpace(c.OAuthResource) == "" {
-		return fmt.Errorf("http.oauth_resource is required")
 	}
 	return nil
 }

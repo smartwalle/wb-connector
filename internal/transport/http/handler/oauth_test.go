@@ -16,10 +16,10 @@ import (
 	"github.com/smartwalle/rx/router"
 )
 
-// stubAuthService 是 oauthdomain.Service 的测试替身。
+// stubOAuthService 是 oauthdomain.Service 的测试替身。
 //
 // 各用例只关心自己用得上的方法，其余返回零值。
-type stubAuthService struct {
+type stubOAuthService struct {
 	// validateErr 是 ValidateAuthorizeRequest 的返回值。
 	validateErr error
 
@@ -36,40 +36,48 @@ type stubAuthService struct {
 	client *oauthdomain.Client
 }
 
-func (s *stubAuthService) Authenticate(ctx context.Context, req oauthdomain.AuthenticateRequest) (string, error) {
+func (s *stubOAuthService) Authenticate(ctx context.Context, req oauthdomain.AuthenticateRequest) (string, error) {
 	return "demo", nil
 }
 
-func (s *stubAuthService) RegisterClient(ctx context.Context, req oauthdomain.RegisterRequest) (*oauthdomain.Client, error) {
+func (s *stubOAuthService) RegisterClient(ctx context.Context, req oauthdomain.RegisterRequest) (*oauthdomain.Client, error) {
 	if s.client != nil {
 		return s.client, nil
 	}
 	return &oauthdomain.Client{ClientID: "client_test", RedirectURIs: req.RedirectURIs}, nil
 }
 
-func (s *stubAuthService) ValidateAuthorizeRequest(ctx context.Context, req oauthdomain.AuthorizeRequest) error {
+func (s *stubOAuthService) ValidateAuthorizeRequest(ctx context.Context, req oauthdomain.AuthorizeRequest) error {
 	return s.validateErr
 }
 
-func (s *stubAuthService) IssueAuthCode(ctx context.Context, req oauthdomain.AuthorizeRequest) (*oauthdomain.AuthCode, error) {
+func (s *stubOAuthService) IssueAuthCode(ctx context.Context, req oauthdomain.AuthorizeRequest) (*oauthdomain.AuthCode, error) {
 	if s.issueCodeErr != nil {
 		return nil, s.issueCodeErr
 	}
 	return &oauthdomain.AuthCode{Code: "code_test", ClientID: req.ClientID, RedirectURI: req.RedirectURI}, nil
 }
 
-func (s *stubAuthService) IssueToken(ctx context.Context, req oauthdomain.TokenRequest) (*oauthdomain.Token, error) {
+func (s *stubOAuthService) IssueToken(ctx context.Context, req oauthdomain.TokenRequest) (*oauthdomain.Token, error) {
 	if s.issueTokenErr != nil {
 		return nil, s.issueTokenErr
 	}
 	return &oauthdomain.Token{AccessToken: "at_test", RefreshToken: "rt_test", TokenType: "Bearer"}, nil
 }
 
-func (s *stubAuthService) VerifyToken(ctx context.Context, accessToken string) (*oauthdomain.Token, error) {
+func (s *stubOAuthService) Issuer() string {
+	return "http://127.0.0.1:8080"
+}
+
+func (s *stubOAuthService) Resource() string {
+	return "http://127.0.0.1:8080/mcp"
+}
+
+func (s *stubOAuthService) VerifyToken(ctx context.Context, accessToken string) (*oauthdomain.Token, error) {
 	return &oauthdomain.Token{AccessToken: accessToken}, nil
 }
 
-func (s *stubAuthService) RevokeToken(ctx context.Context, req oauthdomain.RevokeRequest) error {
+func (s *stubOAuthService) RevokeToken(ctx context.Context, req oauthdomain.RevokeRequest) error {
 	return s.revokeErr
 }
 
@@ -80,7 +88,7 @@ func newTestServer(t *testing.T, service oauthdomain.Service) http.Handler {
 	t.Helper()
 	var engine = rx.New()
 	var r = router.New()
-	NewMetadataHandler("http://127.0.0.1:8080", "http://127.0.0.1:8080/mcp").RegisterRoutes(r)
+	NewMetadataHandler(service).RegisterRoutes(r)
 	NewOAuthHandler(service).RegisterRoutes(r)
 	engine.UseRouter(r)
 	return engine
@@ -110,35 +118,35 @@ func TestAuthorizeErrorsRenderHTML(t *testing.T) {
 	var cases = []struct {
 		name       string
 		query      string
-		service    *stubAuthService
+		service    *stubOAuthService
 		wantStatus int
 		wantCode   string
 	}{
 		{
 			name:       "缺少 client_id",
 			query:      "redirect_uri=http%3A%2F%2F127.0.0.1%2Fcb",
-			service:    &stubAuthService{},
+			service:    &stubOAuthService{},
 			wantStatus: http.StatusBadRequest,
 			wantCode:   "invalid_request",
 		},
 		{
 			name:       "缺少 redirect_uri",
 			query:      "client_id=client_test",
-			service:    &stubAuthService{},
+			service:    &stubOAuthService{},
 			wantStatus: http.StatusBadRequest,
 			wantCode:   "invalid_request",
 		},
 		{
 			name:       "客户端未注册",
 			query:      validQuery,
-			service:    &stubAuthService{validateErr: oauthdomain.ErrInvalidClient},
+			service:    &stubOAuthService{validateErr: oauthdomain.ErrInvalidClient},
 			wantStatus: http.StatusBadRequest,
 			wantCode:   "unauthorized_client",
 		},
 		{
 			name:       "回调地址不匹配",
 			query:      validQuery,
-			service:    &stubAuthService{validateErr: oauthdomain.ErrInvalidRedirectURI},
+			service:    &stubOAuthService{validateErr: oauthdomain.ErrInvalidRedirectURI},
 			wantStatus: http.StatusBadRequest,
 			wantCode:   "invalid_request",
 		},
@@ -172,7 +180,7 @@ func TestAuthorizeErrorsRenderHTML(t *testing.T) {
 
 // TestAuthorizeSuccessRendersLoginPage 验证参数合法时渲染登录页。
 func TestAuthorizeSuccessRendersLoginPage(t *testing.T) {
-	var rec = do(t, newTestServer(t, &stubAuthService{}), http.MethodGet, PathAuthorize+"?"+validQuery, "")
+	var rec = do(t, newTestServer(t, &stubOAuthService{}), http.MethodGet, PathAuthorize+"?"+validQuery, "")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("状态码 = %d, 期望 200", rec.Code)
@@ -197,7 +205,7 @@ func TestLoginErrorsRenderHTML(t *testing.T) {
 		"code_challenge":        {"abc"},
 		"code_challenge_method": {"S256"},
 	}
-	var service = &stubAuthService{issueCodeErr: oauthdomain.ErrInvalidClient}
+	var service = &stubOAuthService{issueCodeErr: oauthdomain.ErrInvalidClient}
 	var rec = do(t, newTestServer(t, service), http.MethodPost, PathLogin, form.Encode())
 
 	if rec.Code != http.StatusBadRequest {
@@ -225,7 +233,7 @@ func TestLoginSuccessRendersSuccessPage(t *testing.T) {
 		"username":              {"demo"},
 		"password":              {"demo123"},
 	}
-	var rec = do(t, newTestServer(t, &stubAuthService{}), http.MethodPost, PathLogin, form.Encode())
+	var rec = do(t, newTestServer(t, &stubOAuthService{}), http.MethodPost, PathLogin, form.Encode())
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("状态码 = %d, 期望 200", rec.Code)
@@ -271,7 +279,7 @@ func TestLoginInvalidRedirectURIRendersHTML(t *testing.T) {
 		"code_challenge":        {"abc"},
 		"code_challenge_method": {"S256"},
 	}
-	var rec = do(t, newTestServer(t, &stubAuthService{}), http.MethodPost, PathLogin, form.Encode())
+	var rec = do(t, newTestServer(t, &stubOAuthService{}), http.MethodPost, PathLogin, form.Encode())
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("状态码 = %d, 期望 400", rec.Code)
@@ -285,7 +293,7 @@ func TestLoginInvalidRedirectURIRendersHTML(t *testing.T) {
 //
 // 元数据、动态注册、令牌这三个端点由客户端调用，必须保持 JSON。
 func TestMachineEndpointsReturnJSON(t *testing.T) {
-	var server = newTestServer(t, &stubAuthService{})
+	var server = newTestServer(t, &stubOAuthService{})
 
 	t.Run("受保护资源元数据", func(t *testing.T) {
 		var rec = do(t, server, http.MethodGet, PathProtectedResource, "")
@@ -378,7 +386,7 @@ func TestTokenErrorCodeInResponse(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			var service = &stubAuthService{issueTokenErr: tc.err}
+			var service = &stubOAuthService{issueTokenErr: tc.err}
 			var rec = do(t, newTestServer(t, service), http.MethodPost, PathToken, "grant_type=authorization_code")
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("状态码 = %d, 期望 400", rec.Code)
@@ -399,7 +407,7 @@ func TestTokenErrorCodeInResponse(t *testing.T) {
 // 对应 RFC 7009：撤销成功返回 200，参数缺失返回 400。
 func TestRevokeEndpoint(t *testing.T) {
 	t.Run("撤销成功", func(t *testing.T) {
-		var rec = do(t, newTestServer(t, &stubAuthService{}), http.MethodPost, PathRevoke,
+		var rec = do(t, newTestServer(t, &stubOAuthService{}), http.MethodPost, PathRevoke,
 			"token=at_test&token_type_hint=access_token&client_id=client_test")
 		if rec.Code != http.StatusOK {
 			t.Fatalf("状态码 = %d, 期望 200", rec.Code)
@@ -407,7 +415,7 @@ func TestRevokeEndpoint(t *testing.T) {
 	})
 
 	t.Run("缺少 token", func(t *testing.T) {
-		var rec = do(t, newTestServer(t, &stubAuthService{}), http.MethodPost, PathRevoke, "client_id=client_test")
+		var rec = do(t, newTestServer(t, &stubOAuthService{}), http.MethodPost, PathRevoke, "client_id=client_test")
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("状态码 = %d, 期望 400", rec.Code)
 		}
@@ -425,7 +433,7 @@ func TestRevokeEndpoint(t *testing.T) {
 //
 // resource 缺省时不校验；给了就必须与本服务声明的受保护资源一致。
 func TestResourceIndicator(t *testing.T) {
-	var server = newTestServer(t, &stubAuthService{})
+	var server = newTestServer(t, &stubOAuthService{})
 
 	t.Run("resource 一致时放行", func(t *testing.T) {
 		var rec = do(t, server, http.MethodPost, PathToken,

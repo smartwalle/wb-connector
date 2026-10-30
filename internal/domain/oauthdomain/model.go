@@ -1,4 +1,4 @@
-// Package authdomain 定义认证领域的实体与业务契约。
+// Package oauthdomain 定义 OAuth 领域的实体、契约与配置。
 //
 // 这里只描述"授权码、令牌、客户端注册"这些概念本身，
 // 不感知 HTTP 协议细节，也不感知 MCP。

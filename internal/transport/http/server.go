@@ -33,8 +33,8 @@ type Server struct {
 // config 提供地址与超时参数，mcpHandler 是 MCP 协议的处理器，挂在 mcpPath 指定的路径上
 // 与业务接口共用同一个端口。
 //
-// authService 非空时启用 OAuth：注册授权端点，并给 MCP 端点加上令牌校验。
-func NewServer(config Config, mcpHandler http.Handler, authService oauthdomain.Service) *Server {
+// oauthService 非空时启用 OAuth：注册授权端点，并给 MCP 端点加上令牌校验。
+func NewServer(config Config, mcpHandler http.Handler, oauthService oauthdomain.Service) *Server {
 	var engine = rx.New()
 	engine.Use(middleware.MidRecovery())
 	engine.Use(middleware.MidRequestId())
@@ -47,14 +47,14 @@ func NewServer(config Config, mcpHandler http.Handler, authService oauthdomain.S
 	handler.NewHealthHandler().RegisterRoutes(r)
 
 	// 元数据端点：客户端据此发现授权服务器。
-	handler.NewMetadataHandler(config.OAuthIssuer, config.OAuthResource).RegisterRoutes(r)
+	handler.NewMetadataHandler(oauthService).RegisterRoutes(r)
 
 	// 授权流程端点：注册、授权、登录、令牌、撤销。
-	handler.NewOAuthHandler(authService).RegisterRoutes(r)
+	handler.NewOAuthHandler(oauthService).RegisterRoutes(r)
 
 	// MCP服务端点
 	var mcpGroup = r.Group("/mcp")
-	mcpGroup.Use(middleware.MidOAuth(authService, config.OAuthIssuer+handler.PathProtectedResource))
+	mcpGroup.Use(middleware.MidOAuth(oauthService, handler.PathProtectedResource))
 	mcpGroup.POST("", func(c *rx.Context) {
 		mcpHandler.ServeHTTP(c.Writer, c.Request)
 	})

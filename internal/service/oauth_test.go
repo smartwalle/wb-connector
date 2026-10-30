@@ -16,8 +16,8 @@ func testChallenge(verifier string) string {
 	return base64.RawURLEncoding.EncodeToString(digest[:])
 }
 
-func TestAuthService_Authenticate(t *testing.T) {
-	var service = NewAuthService()
+func TestOAuthService_Authenticate(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 
 	tests := []struct {
@@ -52,8 +52,8 @@ func TestAuthService_Authenticate(t *testing.T) {
 	}
 }
 
-func TestAuthService_注册与授权码(t *testing.T) {
-	var service = NewAuthService()
+func TestOAuthService_注册与授权码(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 	var redirectURI = "workbuddy://workbuddy/mcp/connector%3Atest/oauth/callback"
 	var verifier = "test-verifier-value"
@@ -93,8 +93,8 @@ func TestAuthService_注册与授权码(t *testing.T) {
 	}
 }
 
-func TestAuthService_授权参数校验(t *testing.T) {
-	var service = NewAuthService()
+func TestOAuthService_授权参数校验(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 	var redirectURI = "workbuddy://callback"
 
@@ -149,8 +149,8 @@ func TestAuthService_授权参数校验(t *testing.T) {
 	}
 }
 
-func TestAuthService_换取令牌与PKCE校验(t *testing.T) {
-	var service = NewAuthService()
+func TestOAuthService_换取令牌与PKCE校验(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 	var redirectURI = "workbuddy://callback"
 	var verifier = "correct-verifier"
@@ -199,8 +199,8 @@ func TestAuthService_换取令牌与PKCE校验(t *testing.T) {
 	}
 }
 
-func TestAuthService_授权码一次性(t *testing.T) {
-	var service = NewAuthService()
+func TestOAuthService_授权码一次性(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 	var redirectURI = "workbuddy://callback"
 	var verifier = "v"
@@ -229,11 +229,11 @@ func TestAuthService_授权码一次性(t *testing.T) {
 	}
 }
 
-// TestAuthService_换取令牌必须带clientID 验证换令牌时必须提供 client_id。
+// TestOAuthService_换取令牌必须带clientID 验证换令牌时必须提供 client_id。
 //
 // 省略它等于放弃客户端身份校验——拿到授权码的一方就能直接换令牌。
-func TestAuthService_换取令牌必须带clientID(t *testing.T) {
-	var service = NewAuthService()
+func TestOAuthService_换取令牌必须带clientID(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 	var redirectURI = "workbuddy://callback"
 	var verifier = "v"
@@ -255,9 +255,9 @@ func TestAuthService_换取令牌必须带clientID(t *testing.T) {
 	}
 }
 
-// TestAuthService_令牌校验与刷新 验证令牌校验与刷新流程。
-func TestAuthService_令牌校验与刷新(t *testing.T) {
-	var service = NewAuthService()
+// TestOAuthService_令牌校验与刷新 验证令牌校验与刷新流程。
+func TestOAuthService_令牌校验与刷新(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 	var redirectURI = "workbuddy://callback"
 	var verifier = "v"
@@ -307,9 +307,9 @@ func TestAuthService_令牌校验与刷新(t *testing.T) {
 	}
 }
 
-// TestAuthService_刷新令牌绑定客户端 验证刷新令牌不能跨客户端使用。
-func TestAuthService_刷新令牌绑定客户端(t *testing.T) {
-	var service = NewAuthService()
+// TestOAuthService_刷新令牌绑定客户端 验证刷新令牌不能跨客户端使用。
+func TestOAuthService_刷新令牌绑定客户端(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 	var verifier = "v"
 	var challenge = testChallenge(verifier)
@@ -346,19 +346,19 @@ func TestAuthService_刷新令牌绑定客户端(t *testing.T) {
 	}
 }
 
-func TestAuthService_注册缺少回调地址(t *testing.T) {
-	var service = NewAuthService()
+func TestOAuthService_注册缺少回调地址(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	_, err := service.RegisterClient(context.Background(), oauthdomain.RegisterRequest{})
 	if err == nil {
 		t.Fatal("缺少 redirect_uris 应返回错误")
 	}
 }
 
-// TestAuthService_注册校验回调地址 验证动态注册时的回调地址校验。
+// TestOAuthService_注册校验回调地址 验证动态注册时的回调地址校验。
 //
 // RFC 7591 第 2 节要求：必须是绝对 URI，且不能带 fragment。
-func TestAuthService_注册校验回调地址(t *testing.T) {
-	var service = NewAuthService()
+func TestOAuthService_注册校验回调地址(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 
 	tests := []struct {
@@ -389,12 +389,12 @@ func TestAuthService_注册校验回调地址(t *testing.T) {
 	}
 }
 
-// TestAuthService_回调地址匹配规则 验证回调地址的匹配规则。
+// TestOAuthService_回调地址匹配规则 验证回调地址的匹配规则。
 //
 // 精确匹配优先；回环地址只放宽端口（RFC 8252 第 7.3 节），
 // 且必须与登记列表里的某个回环地址对应，不能凭空放行。
-func TestAuthService_回调地址匹配规则(t *testing.T) {
-	var service = NewAuthService()
+func TestOAuthService_回调地址匹配规则(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 
 	// 客户端登记了私有协议回调地址与一个回环地址。
@@ -477,9 +477,9 @@ func TestAuthService_回调地址匹配规则(t *testing.T) {
 	}
 }
 
-// TestAuthService_IPv6回环端口可不同 验证登记了 IPv6 回环地址时端口可变化。
-func TestAuthService_IPv6回环端口可不同(t *testing.T) {
-	var service = NewAuthService()
+// TestOAuthService_IPv6回环端口可不同 验证登记了 IPv6 回环地址时端口可变化。
+func TestOAuthService_IPv6回环端口可不同(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 
 	client, err := service.RegisterClient(ctx, oauthdomain.RegisterRequest{
@@ -499,12 +499,12 @@ func TestAuthService_IPv6回环端口可不同(t *testing.T) {
 	}
 }
 
-// TestAuthService_未登记的回环地址被拒绝 验证回环放宽不会放过未登记的地址。
+// TestOAuthService_未登记的回环地址被拒绝 验证回环放宽不会放过未登记的地址。
 //
 // 若不比对登记列表，攻击者能构造一个从未登记的回环地址，
 // 把用户授权后拿到的授权码引到自己的本地服务。
-func TestAuthService_未登记的回环地址被拒绝(t *testing.T) {
-	var service = NewAuthService()
+func TestOAuthService_未登记的回环地址被拒绝(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 
 	// 登记列表里只有私有协议地址，没有任何回环地址。
@@ -526,9 +526,9 @@ func TestAuthService_未登记的回环地址被拒绝(t *testing.T) {
 	}
 }
 
-// TestAuthService_撤销令牌 验证令牌撤销行为。
-func TestAuthService_撤销令牌(t *testing.T) {
-	var service = NewAuthService()
+// TestOAuthService_撤销令牌 验证令牌撤销行为。
+func TestOAuthService_撤销令牌(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 	var redirectURI = "workbuddy://callback"
 	var verifier = "v"
@@ -567,9 +567,9 @@ func TestAuthService_撤销令牌(t *testing.T) {
 	}
 }
 
-// TestAuthService_不能撤销他人令牌 验证撤销时的客户端归属校验。
-func TestAuthService_不能撤销他人令牌(t *testing.T) {
-	var service = NewAuthService()
+// TestOAuthService_不能撤销他人令牌 验证撤销时的客户端归属校验。
+func TestOAuthService_不能撤销他人令牌(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	var ctx = context.Background()
 	var verifier = "v"
 	var challenge = testChallenge(verifier)
@@ -595,9 +595,9 @@ func TestAuthService_不能撤销他人令牌(t *testing.T) {
 	}
 }
 
-// TestAuthService_不支持的授权类型 验证错误码符合 RFC 6749 第 5.2 节。
-func TestAuthService_不支持的授权类型(t *testing.T) {
-	var service = NewAuthService()
+// TestOAuthService_不支持的授权类型 验证错误码符合 RFC 6749 第 5.2 节。
+func TestOAuthService_不支持的授权类型(t *testing.T) {
+	var service = NewOAuthService(oauthdomain.Config{Issuer: "http://127.0.0.1:8080", Resource: "http://127.0.0.1:8080/mcp"})
 	_, err := service.IssueToken(context.Background(), oauthdomain.TokenRequest{
 		GrantType: "client_credentials",
 	})

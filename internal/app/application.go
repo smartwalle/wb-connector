@@ -28,9 +28,9 @@ func Run(ctx context.Context, env *Environment) error {
 
 	var greetService = service.NewGreetService()
 
-	// 认证服务。它同时服务于两处：OAuth 端点用它签发令牌，
+	// OAuth 服务。它同时服务于两处：OAuth 端点用它签发令牌，
 	// MCP 端点的令牌校验中间件用它验签。
-	var authService = service.NewAuthService()
+	var authService = service.NewOAuthService(env.Config.OAuth)
 
 	// MCP 协议服务。它只提供处理器，由 HTTP 层挂到 /mcp 路径上，
 	// 与业务接口共用同一个 server、同一个端口。

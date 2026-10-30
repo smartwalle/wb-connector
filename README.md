@@ -166,11 +166,11 @@ connect(id) → 若返回 state === 'unauthorized' 且 authMode === 'oauth'
 会先在浏览器完成登录，之后 WorkBuddy 自动携带令牌调用。
 
 ```yaml
-http:
+oauth:
   # 授权服务器对外可达的地址。生产环境必须使用 HTTPS。
-  oauth_issuer: "https://mcp.example.com"
+  issuer: "https://mcp.example.com"
   # 受保护资源的标识，通常与 MCP 端点地址一致。
-  oauth_resource: "https://mcp.example.com/mcp"
+  resource: "https://mcp.example.com/mcp"
 ```
 
 ### 端点
@@ -242,6 +242,24 @@ var accounts = map[string]string{
 - **令牌校验中间件只挂 MCP 路由**：业务接口（如 `/health`）不需要认证。
 - **状态保存在内存**：进程重启后授权码与令牌全部失效。
 
+### 分层与依赖方向
+
+```
+domain       最底层，只定义契约与数据结构
+service      业务实现，只依赖 domain
+transport    协议适配，只依赖 domain
+config       组合层，把各模块的配置结构组合成配置文件
+app          组装层，按依赖方向创建实现并注入
+```
+
+**依赖只能向下**。`config` 依赖各模块，反过来不行——那会形成循环引用，
+且报错（`import cycle not allowed`）很难让人联想到是哪条规则被破坏。
+
+各模块的配置结构由模块自己维护：`http.Config` 在传输层，
+`oauthdomain.Config` 在 OAuth 领域包。`config` 包只做组合。
+
+这些约束由 `internal/arch` 的测试守着，`go test ./...` 会拦住违规的依赖。
+
 ## MCP 接入
 
 MCP 端点与业务接口共用同一个 HTTP server 和同一个端口，MCP 只是路由上的一条路径。
@@ -308,7 +326,7 @@ skills/greet/SKILL.md
 ```
 
 提交前需把 `workbuddy/connector/mcp.json` 里的 `url` 换成实际部署地址，
-并把 `cmd/config.yaml` 的 `oauth_issuer`、`oauth_resource` 一并改成该地址——
+并把 `cmd/config.yaml` 的 `oauth.issuer`、`oauth.resource` 一并改成该地址——
 两处必须一致，否则客户端发现授权服务器时会指向错误地址。
 
 ## 技术栈
