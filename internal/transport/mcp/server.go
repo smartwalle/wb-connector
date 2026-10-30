@@ -22,8 +22,8 @@ const (
 
 // Server 封装 MCP Server，负责创建实例与注册工具。
 type Server struct {
-	server *mcp.Server
-
+	server       *mcp.Server
+	handler      http.Handler
 	greetService greetdomain.Service
 }
 
@@ -49,11 +49,7 @@ func NewServer(greetService greetdomain.Service) *Server {
 		},
 	}, s.Greet)
 
-	return s
-}
-
-func (s *Server) HTTPHandler() http.Handler {
-	return mcp.NewStreamableHTTPHandler(
+	s.handler = mcp.NewStreamableHTTPHandler(
 		func(*http.Request) *mcp.Server {
 			return s.server
 		},
@@ -61,4 +57,9 @@ func (s *Server) HTTPHandler() http.Handler {
 			Stateless: true,
 		},
 	)
+	return s
+}
+
+func (s *Server) HTTPHandler() http.Handler {
+	return s.handler
 }
