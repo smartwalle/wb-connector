@@ -1,0 +1,22 @@
+# 配置模板。
+#
+# 复制为 config.yaml 后按需修改：
+#   cp config.example.yaml config.yaml
+#
+# 注意 oauth_issuer 与 oauth_resource 必须与 workbuddy/connector/mcp.json
+# 里声明的 MCP 服务地址一致，否则 WorkBuddy 客户端发现授权服务器时会失败。
+
+app:
+  name: wb-connector
+  environment: development
+  shutdown_timeout: 10s
+
+http:
+  address: "127.0.0.1:8080"
+  read_timeout: 10s
+  write_timeout: 30s
+  idle_timeout: 60s
+  # 授权服务器对外可达的地址。生产环境必须使用 HTTPS。
+  oauth_issuer: "http://127.0.0.1:8080"
+  # 受保护资源的标识，通常与 MCP 端点地址一致。
+  oauth_resource: "http://127.0.0.1:8080/mcp"

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "wb-connector",
+  "version": "1.0.0",
+  "description": "Greet anyone in Chinese or English through natural language. Sign in via the Connectors panel before first use.",
+  "keywords": [
+    "mcp",
+    "skills"
+  ],
+  "extensions": {
+    "ai.workbuddy": {
+      "schemaVersion": "1.0.0",
+      "display": {
+        "name": "问候服务",
+        "name_en": "Greeter",
+        "description": "Greet anyone in Chinese or English through natural language. Sign in via the Connectors panel before first use.",
+        "description_zh": "通过自然语言向指定的人问好，支持中文与英文两种问候语。首次使用前，请先在「连接器」面板中点击「连接」完成登录授权。",
+        "description_en": "Say hello to anyone in Chinese or English through natural language. Sign in via the Connectors panel before first use.",
+        "examples_zh": [
+          "帮我向小明问个好",
+          "用英文跟 Alice 打个招呼",
+          "跟王经理问声好"
+        ],
+        "examples_en": [
+          "Say hello to Alice for me",
+          "Greet John in English",
+          "Send my regards to Sarah"
+        ]
+      },
+      "policy": {
+        "minWorkbuddyVersion": "4.24.0",
+        "mcpServers": {
+          "wb-connector": {
+            "timeout": 30000
+          }
+        }
+      }
+    }
+  }
+}
