@@ -20,10 +20,6 @@ import (
 	"github.com/smartwalle/rx/router"
 )
 
-type Handler interface {
-	RegisterRoutes(r router.Router)
-}
-
 // Server 管理 HTTP 服务：rx Engine、路由与中间件，以及 HTTP Server 的监听与启停。
 //
 // 它满足应用生命周期框架的服务契约（Start/Stop），由 internal/app 注册到 bootstrap。
@@ -38,7 +34,7 @@ type Server struct {
 // 与业务接口共用同一个端口。
 //
 // authService 非空时启用 OAuth：注册授权端点，并给 MCP 端点加上令牌校验。
-func NewServer(config Config, mcpHandler Handler, authService oauthdomain.Service) *Server {
+func NewServer(config Config, mcpHandler http.Handler, authService oauthdomain.Service) *Server {
 	var engine = rx.New()
 	engine.Use(middleware.MidRecovery())
 	engine.Use(middleware.MidRequestId())
@@ -57,9 +53,14 @@ func NewServer(config Config, mcpHandler Handler, authService oauthdomain.Servic
 	handler.NewOAuthHandler(authService).RegisterRoutes(r)
 
 	// MCP服务端点
-	var mcp = r.Group("/mcp")
-	mcp.Use(middleware.MidOAuth(authService, config.OAuthIssuer+handler.PathProtectedResource))
-	mcpHandler.RegisterRoutes(mcp)
+	var mcpGroup = r.Group("/mcp")
+	mcpGroup.Use(middleware.MidOAuth(authService, config.OAuthIssuer+handler.PathProtectedResource))
+	mcpGroup.POST("", func(c *rx.Context) {
+		mcpHandler.ServeHTTP(c.Writer, c.Request)
+	})
+	mcpGroup.GET("", func(c *rx.Context) {
+		mcpHandler.ServeHTTP(c.Writer, c.Request)
+	})
 
 	engine.UseRouter(r)
 

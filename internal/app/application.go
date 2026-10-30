@@ -37,7 +37,7 @@ func Run(ctx context.Context, env *Environment) error {
 	var mcpServer = mcp.NewServer(greetService)
 
 	// HTTP 服务的监听与启停由传输层的 Server 管理，应用层只负责把它注册到生命周期框架。
-	var httpServer = http.NewServer(env.Config.HTTP, mcpServer, authService)
+	var httpServer = http.NewServer(env.Config.HTTP, mcpServer.HTTPHandler(), authService)
 
 	var application = bootstrap.New(
 		bootstrap.WithContext(ctx),

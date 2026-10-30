@@ -10,8 +10,6 @@ import (
 	"wb-connector/internal/domain/greetdomain"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/smartwalle/rx"
-	"github.com/smartwalle/rx/router"
 )
 
 const (
@@ -54,15 +52,13 @@ func NewServer(greetService greetdomain.Service) *Server {
 	return s
 }
 
-func (s *Server) RegisterRoutes(r router.Router) {
-	var handler = mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
-		return s.server
-	}, &mcp.StreamableHTTPOptions{Stateless: true})
-
-	r.POST("", func(c *rx.Context) {
-		handler.ServeHTTP(c.Writer, c.Request)
-	})
-	r.GET("", func(c *rx.Context) {
-		handler.ServeHTTP(c.Writer, c.Request)
-	})
+func (s *Server) HTTPHandler() http.Handler {
+	return mcp.NewStreamableHTTPHandler(
+		func(*http.Request) *mcp.Server {
+			return s.server
+		},
+		&mcp.StreamableHTTPOptions{
+			Stateless: true,
+		},
+	)
 }
